@@ -44,8 +44,19 @@ for row in range(BRICK_ROWS):
 score = 0
 font = pygame.font.SysFont(None, 36)
 
-def draw_paddle(x, y):
-    pygame.draw.rect(screen, BLUE, (x, y, PADDLE_WIDTH, PADDLE_HEIGHT))
+def draw_paddle(x, y, angle=0):
+    # Create a paddle surface
+    paddle_surface = pygame.Surface((PADDLE_WIDTH, PADDLE_HEIGHT))
+    paddle_surface.fill(BLUE)
+    
+    # Rotate the surface
+    rotated = pygame.transform.rotate(paddle_surface, math.degrees(angle))
+    
+    # Calculate position to keep center at (x + PADDLE_WIDTH/2, y + PADDLE_HEIGHT/2)
+    rect = rotated.get_rect(center=(x + PADDLE_WIDTH//2, y + PADDLE_HEIGHT//2))
+    
+    # Draw the rotated paddle
+    screen.blit(rotated, rect.topleft)
 
 def draw_ball(x, y):
     pygame.draw.circle(screen, RED, (x, y), ball_radius)
@@ -70,6 +81,9 @@ while running:
             running = False
 
     if not game_over:
+        # Initialize paddle angle
+        paddle_angle = 0
+
         # Paddle movement
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and paddle_x > 0:
@@ -90,7 +104,36 @@ while running:
         # Collision with paddle
         if (paddle_x < ball_x < paddle_x + PADDLE_WIDTH and
             paddle_y < ball_y + ball_radius < paddle_y + PADDLE_HEIGHT):
-            ball_dy *= -1
+            # 物理法則通りの反射（入射角=反射角）
+            normal_x, normal_y = 0, -1
+            speed = math.hypot(ball_dx, ball_dy)
+            in_dx = ball_dx / speed
+            in_dy = ball_dy / speed
+            dot = in_dx * normal_x + in_dy * normal_y
+            ref_dx = in_dx - 2 * dot * normal_x
+            ref_dy = in_dy - 2 * dot * normal_y
+
+            # パドル中心からの相対位置を計算（-1:左端, 0:中心, +1:右端）
+            center_x = paddle_x + PADDLE_WIDTH / 2
+            offset = (ball_x - center_x) / (PADDLE_WIDTH / 2)
+            offset = max(-1, min(1, offset))  # 念のためクリップ
+
+            # 傾き角度（最大±15度）
+            max_tilt_deg = 30
+            tilt_angle = math.radians(max_tilt_deg) * offset
+
+            # 反射ベクトルを傾き角度分だけ回転
+            cos_t = math.cos(tilt_angle)
+            sin_t = math.sin(tilt_angle)
+            rot_dx = ref_dx * cos_t - ref_dy * sin_t
+            rot_dy = ref_dx * sin_t + ref_dy * cos_t
+
+            # デバッグ用ログ
+            print(f"[DEBUG] 入射: dx={ball_dx:.2f}, dy={ball_dy:.2f} → 反射: dx={ref_dx*speed:.2f}, dy={ref_dy*speed:.2f} → 傾き補正: dx={rot_dx*speed:.2f}, dy={rot_dy*speed:.2f} (offset={offset:.2f}, tilt={math.degrees(tilt_angle):.2f}度)")
+
+            # 速度を維持して反射ベクトルを適用
+            ball_dx = rot_dx * speed
+            ball_dy = rot_dy * speed
 
         # Collision with bricks
         for brick in bricks[:]:
@@ -107,7 +150,7 @@ while running:
             game_over = True
 
         # Draw everything
-        draw_paddle(paddle_x, paddle_y)
+        draw_paddle(paddle_x, paddle_y, paddle_angle)
         draw_ball(ball_x, ball_y)
         draw_bricks(bricks)
         display_score(score)
