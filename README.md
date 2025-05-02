@@ -10,6 +10,12 @@
 - 開発者: Cline (QWEN3)
 - リポジトリ: [necobit/brick-breaker-game-1](https://github.com/necobit/brick-breaker-game-1)
 
+## Issue解決へのAI活用について
+
+本プロジェクトのIssue対応・機能改善・デザイン調整等の一部は、
+Windsurf + GPT-4.1 のAIアシスト機能を活用して行われています。
+AIによる提案・自動化・コーディング支援により、より迅速かつ高品質な開発が実現されています。
+
 ## ゲーム操作方法
 
 - **左右矢印キー**: パドルの移動
