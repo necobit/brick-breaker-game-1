@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 #QWEN3をClineで実行するテスト
 
@@ -89,19 +90,7 @@ while running:
         # Collision with paddle
         if (paddle_x < ball_x < paddle_x + PADDLE_WIDTH and
             paddle_y < ball_y + ball_radius < paddle_y + PADDLE_HEIGHT):
-            # Calculate offset from center
-            center_x = paddle_x + PADDLE_WIDTH / 2
-            offset = ball_x - center_x
-            max_offset = PADDLE_WIDTH / 2
-            normalized_offset = offset / max_offset  # -1 to 1
-            
-            # Calculate reflection angle based on hit position
-            ball_dx = normalized_offset * 5  # Adjust multiplier for desired speed
             ball_dy *= -1
-            
-            # Maintain incident angle reflection
-            if abs(normalized_offset) < 0.1:
-                ball_dx = 0
 
         # Collision with bricks
         for brick in bricks[:]:
