@@ -24,9 +24,7 @@ paddle_x = (WIDTH - PADDLE_WIDTH) // 2
 paddle_y = HEIGHT - PADDLE_HEIGHT - 10
 
 # Ball settings
-ball_x, ball_y = WIDTH // 2, HEIGHT // 2
 ball_radius = 10
-ball_dx, ball_dy = 5, -5
 
 # Brick settings
 BRICK_ROWS = 5
@@ -42,8 +40,25 @@ for row in range(BRICK_ROWS):
 
 # Score
 score = 0
+lives = 5
 font = pygame.font.SysFont(None, 36)
 
+# --- ゲーム状態管理変数 ---
+waiting_for_space = True  # Trueならスペース待ち（スタート/リトライ）
+
+# --- ボール初期化ロジック ---
+def reset_ball():
+    global ball_x, ball_y, ball_dx, ball_dy
+    ball_x, ball_y = WIDTH // 2, HEIGHT // 2
+    speed = 7
+    angle_deg = random.uniform(-135, -45)  # -90±45度（上向き左右）
+    angle_rad = math.radians(angle_deg)
+    ball_dx = speed * math.cos(angle_rad)
+    ball_dy = speed * math.sin(angle_rad)
+
+reset_ball()
+
+# --- 描画関数 ---
 def draw_paddle(x, y, angle=0):
     # Create a paddle surface
     paddle_surface = pygame.Surface((PADDLE_WIDTH, PADDLE_HEIGHT))
@@ -65,9 +80,15 @@ def draw_bricks(bricks):
     for brick in bricks:
         pygame.draw.rect(screen, GREEN, brick)
 
-def display_score(score):
-    text = font.render(f"Score: {score}", True, WHITE)
+def display_score(score, lives):
+    text = font.render(f"Score: {score}  Lives: {lives}", True, WHITE)
     screen.blit(text, (10, 10))
+
+def display_press_space():
+    font2 = pygame.font.SysFont(None, 36)
+    text2 = font2.render("Press SPACE to Start", True, RED)
+    # 位置を画面中央より下に調整
+    screen.blit(text2, (WIDTH//2 - 140, HEIGHT//2 + 80))
 
 # Main game loop
 running = True
@@ -80,12 +101,26 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+    keys = pygame.key.get_pressed()
+
     if not game_over:
+        # --- スペース待ち状態 ---
+        if waiting_for_space:
+            draw_paddle(paddle_x, paddle_y, 0)
+            draw_ball(ball_x, ball_y)
+            draw_bricks(bricks)
+            display_score(score, lives)
+            display_press_space()
+            pygame.display.flip()
+            clock.tick(60)
+            if keys[pygame.K_SPACE]:
+                waiting_for_space = False
+            continue
+
         # Initialize paddle angle
         paddle_angle = 0
 
         # Paddle movement
-        keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] and paddle_x > 0:
             paddle_x -= 10
         if keys[pygame.K_RIGHT] and paddle_x < WIDTH - PADDLE_WIDTH:
@@ -118,7 +153,7 @@ while running:
             offset = (ball_x - center_x) / (PADDLE_WIDTH / 2)
             offset = max(-1, min(1, offset))  # 念のためクリップ
 
-            # 傾き角度（最大±15度）
+            # 傾き角度（最大±30度）
             max_tilt_deg = 30
             tilt_angle = math.radians(max_tilt_deg) * offset
 
@@ -143,9 +178,17 @@ while running:
                 score += 10
                 break
 
-        # Check game over conditions
+        # 残機ロジック
         if ball_y + ball_radius > HEIGHT:
-            game_over = True
+            lives -= 1
+            if lives > 0:
+                # リトライ: ボール・パドルのみリセット
+                paddle_x = (WIDTH - PADDLE_WIDTH) // 2
+                paddle_y = HEIGHT - PADDLE_HEIGHT - 10
+                reset_ball()
+                waiting_for_space = True
+            else:
+                game_over = True
         if not bricks:
             game_over = True
 
@@ -153,7 +196,7 @@ while running:
         draw_paddle(paddle_x, paddle_y, paddle_angle)
         draw_ball(ball_x, ball_y)
         draw_bricks(bricks)
-        display_score(score)
+        display_score(score, lives)
     else:
         # Draw game over screen
         font = pygame.font.SysFont(None, 48)
@@ -166,13 +209,10 @@ while running:
         screen.blit(text, (WIDTH//2 - 50, HEIGHT//2 + 25))
         
         # Check for retry with R key
-        keys = pygame.key.get_pressed()
         if keys[pygame.K_r]:
             # Reset game
             paddle_x = (WIDTH - PADDLE_WIDTH) // 2
             paddle_y = HEIGHT - PADDLE_HEIGHT - 10
-            ball_x, ball_y = WIDTH // 2, HEIGHT // 2
-            ball_dx, ball_dy = 5, -5
             bricks = []
             for row in range(BRICK_ROWS):
                 for col in range(BRICK_COLS):
@@ -180,8 +220,10 @@ while running:
                     brick_y = row * BRICK_HEIGHT
                     bricks.append(pygame.Rect(brick_x, brick_y, BRICK_WIDTH, BRICK_HEIGHT))
             score = 0
+            lives = 5
+            reset_ball()
             game_over = False
-
+            waiting_for_space = True
 
     pygame.display.flip()
     clock.tick(60)
