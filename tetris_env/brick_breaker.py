@@ -17,9 +17,16 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
+YELLOW = (255, 255, 128)
+BLACK = (0, 0, 0)
+GRAY = (120, 120, 120)
+BLOCK_SHADOW = (80, 80, 80)
+BLOCK_HIGHLIGHT = (200, 255, 200)
+BALL_HIGHLIGHT = (255, 255, 255)
+BALL_SHADOW = (180, 180, 180)
 
 # Paddle settings
-PADDLE_WIDTH, PADDLE_HEIGHT = 100, 20
+PADDLE_WIDTH, PADDLE_HEIGHT = 120, 20
 paddle_x = (WIDTH - PADDLE_WIDTH) // 2
 paddle_y = HEIGHT - PADDLE_HEIGHT - 10
 
@@ -31,11 +38,12 @@ BRICK_ROWS = 5
 BRICK_COLS = 10
 BRICK_WIDTH = WIDTH // BRICK_COLS
 BRICK_HEIGHT = 20
+BRICK_TOP_OFFSET = 50  # スコア表示分のオフセット
 bricks = []
 for row in range(BRICK_ROWS):
     for col in range(BRICK_COLS):
         brick_x = col * BRICK_WIDTH
-        brick_y = row * BRICK_HEIGHT
+        brick_y = BRICK_TOP_OFFSET + row * BRICK_HEIGHT
         bricks.append(pygame.Rect(brick_x, brick_y, BRICK_WIDTH, BRICK_HEIGHT))
 
 # Score
@@ -60,29 +68,45 @@ reset_ball()
 
 # --- 描画関数 ---
 def draw_paddle(x, y, angle=0):
-    # Create a paddle surface
-    paddle_surface = pygame.Surface((PADDLE_WIDTH, PADDLE_HEIGHT))
-    paddle_surface.fill(BLUE)
-    
-    # Rotate the surface
+    # パドルも立体感を意識してグラデーション風に
+    paddle_surface = pygame.Surface((PADDLE_WIDTH, PADDLE_HEIGHT), pygame.SRCALPHA)
+    for i in range(PADDLE_HEIGHT):
+        shade = 180 + int(60 * (i / PADDLE_HEIGHT))
+        color = (shade, shade, 255, 255)
+        pygame.draw.line(paddle_surface, color, (0, i), (PADDLE_WIDTH, i))
     rotated = pygame.transform.rotate(paddle_surface, math.degrees(angle))
-    
-    # Calculate position to keep center at (x + PADDLE_WIDTH/2, y + PADDLE_HEIGHT/2)
     rect = rotated.get_rect(center=(x + PADDLE_WIDTH//2, y + PADDLE_HEIGHT//2))
-    
-    # Draw the rotated paddle
     screen.blit(rotated, rect.topleft)
 
 def draw_ball(x, y):
+    # 立体感のある球体を描画
+    # ベース
     pygame.draw.circle(screen, RED, (x, y), ball_radius)
+    # シャドウ（中心を少しだけ右下、半径も小さめに調整、はみ出さないように）
+    pygame.draw.circle(screen, BALL_SHADOW, (x+2, y+2), ball_radius-4)
+    # ハイライト
+    pygame.draw.circle(screen, BALL_HIGHLIGHT, (x-3, y-3), ball_radius//3)
 
 def draw_bricks(bricks):
     for brick in bricks:
+        # メインブロック
         pygame.draw.rect(screen, GREEN, brick)
+        # 上部ハイライト
+        highlight_rect = pygame.Rect(brick.left+2, brick.top+2, brick.width-4, 5)
+        pygame.draw.rect(screen, BLOCK_HIGHLIGHT, highlight_rect)
+        # 下部シャドウ
+        shadow_rect = pygame.Rect(brick.left+2, brick.bottom-7, brick.width-4, 5)
+        pygame.draw.rect(screen, BLOCK_SHADOW, shadow_rect)
+        # 境界線
+        pygame.draw.rect(screen, BLACK, brick, 2)
 
 def display_score(score, lives):
-    text = font.render(f"Score: {score}  Lives: {lives}", True, WHITE)
-    screen.blit(text, (10, 10))
+    # 黒文字＆スコア背景に白帯を追加して視認性UP
+    bg_rect = pygame.Rect(5, 5, 260, 38)
+    pygame.draw.rect(screen, WHITE, bg_rect, border_radius=8)
+    pygame.draw.rect(screen, GRAY, bg_rect, 2, border_radius=8)
+    text = font.render(f"Score: {score}  Lives: {lives}", True, BLACK)
+    screen.blit(text, (15, 10))
 
 def display_press_space():
     font2 = pygame.font.SysFont(None, 36)
@@ -96,7 +120,7 @@ game_over = False
 clock = pygame.time.Clock()
 
 while running:
-    screen.fill(WHITE)
+    screen.fill(YELLOW)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -217,7 +241,7 @@ while running:
             for row in range(BRICK_ROWS):
                 for col in range(BRICK_COLS):
                     brick_x = col * BRICK_WIDTH
-                    brick_y = row * BRICK_HEIGHT
+                    brick_y = BRICK_TOP_OFFSET + row * BRICK_HEIGHT
                     bricks.append(pygame.Rect(brick_x, brick_y, BRICK_WIDTH, BRICK_HEIGHT))
             score = 0
             lives = 5
